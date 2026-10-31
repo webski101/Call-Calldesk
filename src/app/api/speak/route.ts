@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { TextToSpeechError } from "assemblyai";
 import { getAssemblyClient } from "@/lib/assemblyai";
-import { BUSINESS } from "@/lib/business";
+import { DEFAULT_VOICE_ID } from "@/lib/business";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const voiceId = body.voiceId?.trim() || BUSINESS.voiceId;
+  const voiceId = body.voiceId?.trim() || DEFAULT_VOICE_ID;
   const started = performance.now();
 
   try {

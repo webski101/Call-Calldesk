@@ -1,16 +1,15 @@
 # CallDesk
 
-A front-desk voice line for small businesses. Callers ask about hours, the menu, directions, wifi, or a table — the desk answers out loud, fast, and you can interrupt mid-sentence.
+A voice front desk for **any business**. Owners add their shop (hours, address, services, booking rules, voice). Callers ask questions; the desk answers out loud and can be interrupted mid-sentence.
 
-Demo shop: **Harbor Roast**.
+## What you can do on the site
 
-## Features
+1. **Add your business** — blank form or templates (café, clinic, salon, gym)
+2. **Pick a voice** — AssemblyAI voices
+3. **Open the desk** — pick up the line and test like a real caller
+4. **Call log** — recent test calls saved in this browser
 
-- Pick up the line and get a spoken greeting
-- Ask by typing, quick prompts, or mic (Chrome/Edge speech recognition)
-- Streaming text-to-speech via [AssemblyAI](https://www.assemblyai.com/) (`assemblyai-tts-1`)
-- **Interrupt** barges in and stops playback immediately
-- Shows time-to-first-audio for each spoken reply
+Business profiles are stored in the browser (`localStorage`) for this demo.
 
 ## Setup
 
@@ -18,13 +17,9 @@ Demo shop: **Harbor Roast**.
 cp .env.example .env.local
 ```
 
-Add your AssemblyAI API key:
-
 ```bash
 ASSEMBLYAI_API_KEY=your_key_here
 ```
-
-Then:
 
 ```bash
 npm install
@@ -33,27 +28,21 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Try it
-
-1. Click **Pick up the line**
-2. Ask something like “What are your hours?” or “Can I book a table for 4 tonight?”
-3. While the desk is speaking, hit **Interrupt**
-4. Hang up when you’re done
-
 ## How it works
 
 | Piece | Role |
 | --- | --- |
-| `src/lib/business.ts` | Harbor Roast knowledge + replies (no LLM required) |
-| `src/app/api/agent` | Turns caller text into a desk reply |
-| `src/app/api/speak` | Streams PCM audio from AssemblyAI TTS |
-| `src/lib/pcmPlayer.ts` | Plays the stream in the browser; stop = barge-in |
-| `src/components/CallDeskApp.tsx` | Call UI |
+| Home | Your saved businesses |
+| Add business | Profile + voice |
+| Desk | Live call with streaming TTS |
+| Call log | Recent conversations |
+| `src/lib/business.ts` | Generic replies from any profile |
+| `src/app/api/speak` | AssemblyAI TTS stream |
 
 ## Scripts
 
 ```bash
-npm run dev      # local development
-npm run build    # production build
-npm run start    # serve the build
+npm run dev
+npm run build
+npm run start
 ```
