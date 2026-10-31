@@ -1,46 +1,59 @@
 # CallDesk
 
-AssemblyAI Voice Hackathon submission: a **front-desk voice line** for a demo café (**Harbor Roast**). Callers ask about hours, menu, directions, wifi, or a table — the desk answers with **AssemblyAI-TTS-1** streaming speech. Hit **Interrupt** mid-sentence to barge in.
+A front-desk voice line for small businesses. Callers ask about hours, the menu, directions, wifi, or a table — the desk answers out loud, fast, and you can interrupt mid-sentence.
 
-## Why this
+Demo shop: **Harbor Roast**.
 
-Not a TTS playground. Judges hear a real conversation loop: caller → agent → streamed voice → barge-in.
+## Features
+
+- Pick up the line and get a spoken greeting
+- Ask by typing, quick prompts, or mic (Chrome/Edge speech recognition)
+- Streaming text-to-speech via [AssemblyAI](https://www.assemblyai.com/) (`assemblyai-tts-1`)
+- **Interrupt** barges in and stops playback immediately
+- Shows time-to-first-audio for each spoken reply
 
 ## Setup
 
 ```bash
 cp .env.example .env.local
-# paste ASSEMBLYAI_API_KEY
+```
+
+Add your AssemblyAI API key:
+
+```bash
+ASSEMBLYAI_API_KEY=your_key_here
+```
+
+Then:
+
+```bash
 npm install
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Hackathon credits:
+## Try it
 
-- [$100 credits](https://www.assemblyai.com/dashboard/signup?utm_source=event&utm_medium=credit-grant&utm_campaign=tts_hackathon_oct_2026)
-- [Extra $50](https://www.assemblyai.com/dashboard/signup?utm_source=event&utm_medium=credit-grant&utm_campaign=tts_hackathon_oct_2026_extra)
+1. Click **Pick up the line**
+2. Ask something like “What are your hours?” or “Can I book a table for 4 tonight?”
+3. While the desk is speaking, hit **Interrupt**
+4. Hang up when you’re done
 
-## Demo script
+## How it works
 
-1. **Pick up the line** — greeting streams in Audrey’s voice  
-2. Ask **“What are your hours?”** (chip or type)  
-3. While it’s speaking, hit **Interrupt**  
-4. Ask **“Can I book a table for 4 tonight?”**  
-5. Note **first audio __ ms** under the controls  
+| Piece | Role |
+| --- | --- |
+| `src/lib/business.ts` | Harbor Roast knowledge + replies (no LLM required) |
+| `src/app/api/agent` | Turns caller text into a desk reply |
+| `src/app/api/speak` | Streams PCM audio from AssemblyAI TTS |
+| `src/lib/pcmPlayer.ts` | Plays the stream in the browser; stop = barge-in |
+| `src/components/CallDeskApp.tsx` | Call UI |
 
-Mic **Talk** uses browser speech recognition (Chrome/Edge). Typing always works.
+## Scripts
 
-## Stack
-
-- Next.js App Router  
-- Rule-based café agent (`src/lib/business.ts`) — no LLM key required  
-- `client.tts.stream()` → raw PCM → Web Audio playback  
-- Abort + player stop = barge-in  
-
-## Submit
-
-Form: https://forms.gle/XCW2RdZGbarVLnKEA  
-
-Include a short screen recording of the call + interrupt, repo/demo link, and note AssemblyAI-TTS-1.
+```bash
+npm run dev      # local development
+npm run build    # production build
+npm run start    # serve the build
+```
