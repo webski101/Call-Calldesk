@@ -1,4 +1,4 @@
-import type { BusinessProfile } from "@/lib/business";
+import { PRESETS, type BusinessProfile } from "@/lib/business";
 
 const BUSINESS_KEY = "calldesk.businesses.v1";
 const ACTIVE_KEY = "calldesk.activeBusinessId.v1";
@@ -16,10 +16,27 @@ function canUseStorage() {
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
 }
 
+/** Two starter examples so the home screen isn’t empty on first visit. */
+export function exampleBusinesses(): BusinessProfile[] {
+  const cafe = PRESETS.find((p) => p.id === "preset-cafe")!;
+  const clinic = PRESETS.find((p) => p.id === "preset-clinic")!;
+  return [
+    { ...structuredClone(cafe), id: "example-harbor-roast" },
+    { ...structuredClone(clinic), id: "example-northside-clinic" },
+  ];
+}
+
 export function loadBusinesses(): BusinessProfile[] {
   if (!canUseStorage()) return [];
   try {
     const raw = localStorage.getItem(BUSINESS_KEY);
+    // First visit only — seed two example businesses.
+    if (raw === null) {
+      const examples = exampleBusinesses();
+      localStorage.setItem(BUSINESS_KEY, JSON.stringify(examples));
+      localStorage.setItem(ACTIVE_KEY, examples[0].id);
+      return examples;
+    }
     if (!raw) return [];
     const parsed = JSON.parse(raw) as BusinessProfile[];
     return Array.isArray(parsed) ? parsed : [];

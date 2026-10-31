@@ -381,8 +381,7 @@ export default function CallDeskApp() {
               </p>
               {businesses.length === 0 ? (
                 <p className="text-sm text-[var(--ink-soft)]">
-                  None yet. Add one, or start from a café, clinic, salon, or gym
-                  template.
+                  None yet. Add your own business to get started.
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -392,7 +391,14 @@ export default function CallDeskApp() {
                       className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] py-3"
                     >
                       <div>
-                        <p className="font-medium text-[var(--ink)]">{b.name}</p>
+                        <p className="font-medium text-[var(--ink)]">
+                          {b.name}
+                          {b.id.startsWith("example-") && (
+                            <span className="ml-2 text-[10px] uppercase tracking-[0.14em] text-[var(--harbor)]">
+                              Example
+                            </span>
+                          )}
+                        </p>
                         <p className="text-sm text-[var(--ink-soft)]">{b.kind}</p>
                       </div>
                       <div className="flex flex-wrap gap-2">
