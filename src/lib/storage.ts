@@ -30,18 +30,35 @@ export function loadBusinesses(): BusinessProfile[] {
   if (!canUseStorage()) return [];
   try {
     const raw = localStorage.getItem(BUSINESS_KEY);
-    // First visit only — seed two example businesses.
+    // First visit — seed two example businesses.
     if (raw === null) {
       const examples = exampleBusinesses();
       localStorage.setItem(BUSINESS_KEY, JSON.stringify(examples));
       localStorage.setItem(ACTIVE_KEY, examples[0].id);
       return examples;
     }
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as BusinessProfile[];
-    return Array.isArray(parsed) ? parsed : [];
+
+    const parsed = raw ? (JSON.parse(raw) as BusinessProfile[]) : [];
+    const list = Array.isArray(parsed) ? parsed : [];
+
+    // Keep both examples present even if one was removed earlier.
+    const examples = exampleBusinesses();
+    let changed = false;
+    for (const example of examples) {
+      if (!list.some((b) => b.id === example.id)) {
+        list.push(example);
+        changed = true;
+      }
+    }
+    if (changed) {
+      localStorage.setItem(BUSINESS_KEY, JSON.stringify(list));
+      if (!localStorage.getItem(ACTIVE_KEY)) {
+        localStorage.setItem(ACTIVE_KEY, examples[0].id);
+      }
+    }
+    return list;
   } catch {
-    return [];
+    return exampleBusinesses();
   }
 }
 
@@ -58,14 +75,6 @@ export function upsertBusiness(business: BusinessProfile) {
   saveBusinesses(list);
   setActiveBusinessId(business.id);
   return business;
-}
-
-export function deleteBusiness(id: string) {
-  const list = loadBusinesses().filter((b) => b.id !== id);
-  saveBusinesses(list);
-  if (getActiveBusinessId() === id) {
-    setActiveBusinessId(list[0]?.id ?? null);
-  }
 }
 
 export function getActiveBusinessId(): string | null {

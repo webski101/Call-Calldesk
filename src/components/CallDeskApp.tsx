@@ -11,7 +11,6 @@ import {
 import { playPcmStream, type PcmPlayerHandle } from "@/lib/pcmPlayer";
 import {
   addCallLog,
-  deleteBusiness,
   getActiveBusiness,
   loadBusinesses,
   loadCallLog,
@@ -418,16 +417,6 @@ export default function CallDeskApp() {
                           className="rounded-full border border-[var(--line)] px-4 py-2 text-xs text-[var(--ink-soft)]"
                         >
                           Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            deleteBusiness(b.id);
-                            refreshBusinesses();
-                          }}
-                          className="rounded-full border border-[var(--line)] px-4 py-2 text-xs text-red-700/80"
-                        >
-                          Delete
                         </button>
                       </div>
                     </li>
