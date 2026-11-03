@@ -262,6 +262,15 @@ export default function BusinessSetup({
         />
       </Field>
 
+      <Field label="Pitch (spoken after the greeting)">
+        <textarea
+          className={`${inputClass} min-h-24`}
+          value={draft.pitch ?? ""}
+          onChange={(e) => patch({ pitch: e.target.value })}
+          placeholder="Optional. Example: We're a neighborhood café known for pour-overs and quiet tables — spoken right after the greeting, and when callers ask what you do."
+        />
+      </Field>
+
       <div className="flex flex-wrap gap-3 pt-2">
         <button
           type="button"

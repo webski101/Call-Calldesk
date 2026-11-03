@@ -30,6 +30,8 @@ export type BusinessProfile = {
   wifi?: string;
   offerings: BusinessOfferings;
   booking: BusinessBooking;
+  /** Optional spoken pitch after the greeting / when asked what you do. */
+  pitch?: string;
   ownerNote?: string;
 };
 
@@ -52,9 +54,46 @@ function uid() {
   return `biz_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** "a" / "an" for spoken templates. */
+export function articleFor(word: string) {
+  const w = word.trim().toLowerCase();
+  if (!w) return "a";
+  return /^[aeiou]/.test(w) ? "an" : "a";
+}
+
+export function withArticle(noun: string) {
+  return `${articleFor(noun)} ${noun.trim()}`;
+}
+
+/** Lowercase the first letter so a note can follow mid-sentence. */
+function softenStart(text: string) {
+  const t = text.trim();
+  if (!t) return t;
+  return t.charAt(0).toLowerCase() + t.slice(1);
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function usesPartyWording(business: BusinessProfile) {
+  const kind = business.kind.toLowerCase();
+  const noun = business.booking.noun.toLowerCase();
+  return (
+    noun === "table" ||
+    /\b(caf[eé]|coffee|restaurant|diner|bistro|bar|pub|eatery)\b/i.test(kind)
+  );
+}
+
 export function greetingFor(business: BusinessProfile) {
   const offer = business.offerings.label;
-  return `Hi, thanks for calling ${business.name}. This is the ${business.phoneLabel}. I can help with hours, ${offer}, directions, or a ${business.booking.noun}. What do you need?`;
+  const book = withArticle(business.booking.noun);
+  let text = `Hi, thanks for calling ${business.name}. This is the ${business.phoneLabel}. I can help with hours, ${offer}, directions, or ${book}. What do you need?`;
+  const pitch = business.pitch?.trim();
+  if (pitch) {
+    text += ` ${pitch}`;
+  }
+  return text;
 }
 
 export function promptsFor(business: BusinessProfile) {
@@ -62,7 +101,7 @@ export function promptsFor(business: BusinessProfile) {
     "What are your hours?",
     "Where are you located?",
     `What's on the ${business.offerings.label}?`,
-    `Can I book a ${business.booking.noun} for 4?`,
+    `Can I book ${withArticle(business.booking.noun)}?`,
   ];
 }
 
@@ -96,6 +135,8 @@ export const PRESETS: BusinessProfile[] = [
       leadHours: 2,
       note: "Parties larger than eight need a day of notice.",
     },
+    pitch:
+      "We're a neighborhood café by the ferry — coffee, toast, and a quiet table when you need one.",
   },
   {
     id: "preset-clinic",
@@ -125,6 +166,8 @@ export const PRESETS: BusinessProfile[] = [
       leadHours: 1,
       note: "For emergencies, hang up and dial your local emergency number.",
     },
+    pitch:
+      "We're a walk-in family clinic for sick visits, physicals, vaccines, and basic labs.",
   },
   {
     id: "preset-salon",
@@ -149,6 +192,7 @@ export const PRESETS: BusinessProfile[] = [
       leadHours: 24,
       note: "Same-day openings depend on stylist availability.",
     },
+    pitch: "Lumen is a hair salon for cuts, color, blowouts, and treatments.",
   },
   {
     id: "preset-gym",
@@ -165,8 +209,14 @@ export const PRESETS: BusinessProfile[] = [
     wifi: "ForgeGuest",
     offerings: {
       label: "offerings",
-      items: ["day passes", "monthly memberships", "personal training", "group classes"],
-      priceNote: "Day passes are fifteen; memberships start at forty-nine a month.",
+      items: [
+        "day passes",
+        "monthly memberships",
+        "personal training",
+        "group classes",
+      ],
+      priceNote:
+        "Day passes are fifteen; memberships start at forty-nine a month.",
     },
     booking: {
       noun: "class spot",
@@ -174,6 +224,8 @@ export const PRESETS: BusinessProfile[] = [
       leadHours: 2,
       note: "Training sessions need twenty-four hours notice to cancel.",
     },
+    pitch:
+      "Forge is a gym with day passes, memberships, training, and group classes.",
   },
 ];
 
@@ -202,6 +254,7 @@ export function blankBusiness(): BusinessProfile {
       leadHours: 2,
       note: "",
     },
+    pitch: "",
   };
 }
 
@@ -231,47 +284,92 @@ export function answerCaller(
   const q = normalize(message);
   const offerLabel = business.offerings.label;
   const bookNoun = business.booking.noun;
+  const bookPhrase = withArticle(bookNoun);
   const items = offerList(business);
+  const pitch = business.pitch?.trim() ?? "";
 
   if (!q) {
     return {
       intent: "empty",
-      reply: `I didn't catch that. Want hours, the ${offerLabel}, directions, or a ${bookNoun}?`,
+      reply: `I didn't catch that. Want hours, the ${offerLabel}, directions, or ${bookPhrase}?`,
     };
   }
 
-  if (/(who are you|what is this|are you (a )?robot|ai|human|real person)/.test(q)) {
+  if (
+    /\b(who are you|what is this|real person)\b/.test(q) ||
+    /\b(ai|robot|bot)\b/.test(q) ||
+    /\bare you(?: an?)? (?:a |an )?(?:robot|bot|human|real person)\b/.test(q)
+  ) {
     return {
       intent: "identity",
-      reply: `I'm the voice desk for ${business.name}, a ${business.kind}. I can answer the usual front-desk questions right away. What can I help with?`,
+      reply: `I'm the voice desk for ${business.name}, ${withArticle(business.kind)}. I can answer the usual front-desk questions right away. What can I help with?`,
     };
   }
 
-  if (/(hour|open|close|closing|when.*open|are you open)/.test(q)) {
+  const mentionsDay =
+    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|weekend)\b/.test(
+      q,
+    );
+  if (
+    /\b(hours?|open(?:ing|s)?|close[ds]?|closing)\b/.test(q) ||
+    /\bare you open\b/.test(q) ||
+    /\bwhen (?:are you|do you) open\b/.test(q) ||
+    (mentionsDay && /\b(available|open|hours|free)\b/.test(q))
+  ) {
     return {
       intent: "hours",
-      reply: `We're open weekdays ${business.hours.weekdays}, Saturday ${business.hours.saturday}, and ${business.hours.sunday} on Sunday. Want a ${bookNoun}?`,
+      reply: `We're open weekdays ${business.hours.weekdays}, Saturday ${business.hours.saturday}, and ${business.hours.sunday} on Sunday. Want ${bookPhrase}?`,
     };
   }
 
-  if (/(where|address|direction|locate|find you|how do i get)/.test(q)) {
+  if (
+    /\b(where|address|directions?|locate)\b/.test(q) ||
+    /\bfind you\b/.test(q) ||
+    /\bhow do i get\b/.test(q)
+  ) {
     return {
       intent: "location",
       reply: `You'll find us at ${business.address}.`,
     };
   }
 
-  if (business.wifi && /(wifi|wi fi|password|internet)/.test(q)) {
+  if (
+    business.wifi &&
+    /\b(wifi|wi fi|password|internet)\b/.test(q)
+  ) {
     return {
       intent: "wifi",
       reply: `Wifi is ${business.wifi}. Anything else while I have you?`,
     };
   }
 
+  if (
+    pitch &&
+    (/\bwhat do you (sell|do|offer|have)\b/.test(q) ||
+      /\btell me about\b/.test(q) ||
+      /\babout (?:your|the) (?:business|shop|place|company)\b/.test(q) ||
+      /\bwhat (?:is|are) (?:this|you)\b/.test(q))
+  ) {
+    return {
+      intent: "pitch",
+      reply: pitch,
+    };
+  }
+
+  const offerLabelPattern = escapeRegExp(normalize(offerLabel));
   const offerPattern = new RegExp(
-    `menu|service|offering|treatment|price|cost|what do you (offer|have|sell)|${normalize(offerLabel)}`,
+    `\\b(menu|services?|offerings?|treatments?|prices?|cost|what do you (?:offer|have|sell|do)|tell me about|${offerLabelPattern})\\b`,
   );
-  if (offerPattern.test(q) || items.some((item) => q.includes(normalize(item)))) {
+  if (
+    offerPattern.test(q) ||
+    items.some((item) => {
+      const n = normalize(item);
+      return n.length > 2 && new RegExp(`\\b${escapeRegExp(n)}\\b`).test(q);
+    })
+  ) {
+    if (pitch && /\b(what do you (sell|do|offer)|tell me about)\b/.test(q)) {
+      return { intent: "pitch", reply: pitch };
+    }
     const listed =
       items.length > 1
         ? `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`
@@ -285,40 +383,65 @@ export function answerCaller(
     };
   }
 
-  if (
-    new RegExp(
-      `book|reserv|${normalize(bookNoun)}|appoint|schedule|come in|tonight|tomorrow`,
-    ).test(q)
-  ) {
+  const nounPattern = escapeRegExp(normalize(bookNoun));
+  const bookingPattern = new RegExp(
+    `\\b(book(?:ing|ed)?|reserv(?:e|ation)?|appoint(?:ment)?s?|schedule|come in|tonight|tomorrow|${nounPattern})\\b`,
+  );
+  if (bookingPattern.test(q)) {
     const party = q.match(/\b([2-9]|1[0-2])\b/);
     const size = party ? Number(party[1]) : null;
-    if (size && size > business.booking.partyMax) {
+    const note = business.booking.note?.trim() ?? "";
+
+    if (usesPartyWording(business)) {
+      if (size && size > business.booking.partyMax) {
+        const extra = note
+          ? ` ${softenStart(note)}`
+          : ` We usually cap a table around ${business.booking.partyMax}.`;
+        return {
+          intent: "booking_large",
+          reply: `For ${size},${extra} Tell me a smaller group or leave a note with the team.`,
+        };
+      }
+      const noteBit = note ? ` ${note}` : "";
       return {
-        intent: "booking_large",
-        reply: `For ${size}, ${business.booking.note || `we usually cap a ${bookNoun} around ${business.booking.partyMax}.`} Tell me a smaller group or leave a note with the team.`,
+        intent: "booking",
+        reply: `Happy to help with ${bookPhrase}. We can usually take parties up to ${business.booking.partyMax} with about ${business.booking.leadHours} hours notice.${noteBit} Tell me the day, time, and party size.`,
       };
     }
+
+    const noteBit = note ? ` ${note}` : "";
+    const lead =
+      business.booking.leadHours > 0
+        ? ` About ${business.booking.leadHours} hours notice is ideal.`
+        : "";
     return {
       intent: "booking",
-      reply: `Happy to help with a ${bookNoun}. We can usually take parties up to ${business.booking.partyMax} with about ${business.booking.leadHours} hours notice.${business.booking.note ? ` ${business.booking.note}` : ""} Tell me the day, time, and size.`,
+      reply: `I can book that for you.${lead}${noteBit} Tell me the day and time you prefer.`,
     };
   }
 
-  if (/(thanks|thank you|that's all|that is all|bye|goodbye|nothing else)/.test(q)) {
+  if (
+    /\b(thanks|thank you|bye|goodbye)\b/.test(q) ||
+    /\bthat(?:'s| is) all\b/.test(q) ||
+    /\bnothing else\b/.test(q)
+  ) {
     return {
       intent: "goodbye",
       reply: `You're welcome. Thanks for calling ${business.name}. See you soon.`,
     };
   }
 
-  if (/(help|what can you|options|support)/.test(q)) {
+  if (/\b(help|options|support)\b/.test(q) || /\bwhat can you\b/.test(q)) {
     return {
       intent: "help",
-      reply: `I can cover hours, directions, ${offerLabel}, or booking a ${bookNoun}. What should we start with?`,
+      reply: `I can cover hours, directions, ${offerLabel}, or booking ${bookPhrase}. What should we start with?`,
     };
   }
 
-  if (business.ownerNote && /(special|note|anything else|policy)/.test(q)) {
+  if (
+    business.ownerNote &&
+    /\b(special|note|policy|anything else)\b/.test(q)
+  ) {
     return {
       intent: "owner_note",
       reply: business.ownerNote,
@@ -327,7 +450,7 @@ export function answerCaller(
 
   return {
     intent: "fallback",
-    reply: `I can help with hours, the ${offerLabel}, where we are, or a ${bookNoun} at ${business.name}. Which one do you want?`,
+    reply: `I can help with hours, the ${offerLabel}, where we are, or ${bookPhrase} at ${business.name}. Which one do you want?`,
   };
 }
 
