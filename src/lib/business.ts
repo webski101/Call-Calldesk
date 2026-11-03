@@ -88,12 +88,31 @@ function usesPartyWording(business: BusinessProfile) {
 export function greetingFor(business: BusinessProfile) {
   const offer = business.offerings.label;
   const book = withArticle(business.booking.noun);
-  let text = `Hi, thanks for calling ${business.name}. This is the ${business.phoneLabel}. I can help with hours, ${offer}, directions, or ${book}. What do you need?`;
   const pitch = business.pitch?.trim();
+  const open = `Hi, thanks for calling ${business.name}.`;
+  const desk = `This is the ${business.phoneLabel}.`;
+  const ask = `I can help with hours, ${offer}, directions, or ${book}. What do you need?`;
   if (pitch) {
-    text += ` ${pitch}`;
+    return `${open} ${pitch} ${desk} ${ask}`;
   }
-  return text;
+  return `${open} ${desk} ${ask}`;
+}
+
+/** Verb agreement for "Our X include(s) ..." */
+export function includeVerbFor(label: string) {
+  const w = label.trim().toLowerCase();
+  if (!w) return "includes";
+  // Known plurals / collective labels that take plural verb.
+  if (
+    /\b(services|offerings|packages|treatments|items|options|products)\b/.test(w)
+  ) {
+    return "include";
+  }
+  // Regular plurals ending in s (not ss/us/is).
+  if (w.endsWith("s") && !/(ss|us|is)$/.test(w)) {
+    return "include";
+  }
+  return "includes";
 }
 
 export function promptsFor(business: BusinessProfile) {
@@ -379,7 +398,7 @@ export function answerCaller(
       : "";
     return {
       intent: "offerings",
-      reply: `Our ${offerLabel} includes ${listed}.${price} Want help picking one?`,
+      reply: `Our ${offerLabel} ${includeVerbFor(offerLabel)} ${listed}.${price} Want help picking one?`,
     };
   }
 
